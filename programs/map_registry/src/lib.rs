@@ -26,6 +26,12 @@ pub mod map_registry {
     pub fn initialize(ctx: Context<InitializeMapRegistry>) -> Result<()> {
         let map_registry = &mut ctx.accounts.map_registry;
         // Initialize counters to zero
+        if map_registry.default_maps_count != 0 || map_registry.user_maps_count != 0 {
+            msg!("Map registry already initialized. Skipping reset.");
+            return Ok(()); // Exit early if the account already exists
+        }
+
+
         map_registry.default_maps_count = 0;
         map_registry.user_maps_count = 0;
         Ok(())
