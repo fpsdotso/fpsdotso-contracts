@@ -72,8 +72,10 @@ pub mod map_registry {
         map_metadata.name = name;
         map_metadata.description = description;
         map_metadata.creator = ctx.accounts.user.key();
-        map_metadata.created_at = Clock::get()?.unix_timestamp;
-        map_metadata.updated_at = Clock::get()?.unix_timestamp;
+
+        let current_timestamp = Clock::get()?.unix_timestamp;
+        map_metadata.created_at = current_timestamp;
+        map_metadata.updated_at = current_timestamp;
         map_metadata.is_default = is_default;
         
         // Validate map data size and store it

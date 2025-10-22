@@ -1,0 +1,636 @@
+import * as anchor from "@coral-xyz/anchor";
+import { Program } from "@coral-xyz/anchor";
+import { MapRegistry } from "../target/types/map_registry";
+
+// Simple assertion helpers
+function assertEqual<T>(actual: T, expected: T, message?: string) {
+  if (actual !== expected) {
+    throw new Error(message || `Expected ${expected} but got ${actual}`);
+  }
+}
+
+function assertDeepEqual(actual: any, expected: any, message?: string) {
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error(message || `Expected ${JSON.stringify(expected)} but got ${JSON.stringify(actual)}`);
+  }
+}
+
+function assertTrue(value: boolean, message?: string) {
+  if (!value) {
+    throw new Error(message || `Expected true but got false`);
+  }
+}
+
+function assertNotInclude(array: any[], value: any, message?: string) {
+  if (array.includes(value)) {
+    throw new Error(message || `Array should not include ${value}`);
+  }
+}
+
+function assertInclude(str: string, substring: string, message?: string) {
+  if (!str.includes(substring)) {
+    throw new Error(message || `String should include ${substring}`);
+  }
+}
+
+function assertFail(message: string) {
+  throw new Error(message);
+}
+
+function assertGreaterThan(actual: number, expected: number, message?: string) {
+  if (actual <= expected) {
+    throw new Error(message || `Expected ${actual} to be greater than ${expected}`);
+  }
+}
+
+function assertAtLeast(actual: number, expected: number, message?: string) {
+  if (actual < expected) {
+    throw new Error(message || `Expected ${actual} to be at least ${expected}`);
+  }
+}
+
+function assertDefined(value: any, message?: string) {
+  if (value === undefined || value === null) {
+    throw new Error(message || `Expected value to be defined`);
+  }
+}
+
+describe.only("map-registry", () => {
+  // Configure the client to use the local cluster
+  const provider = anchor.AnchorProvider.env();
+  anchor.setProvider(provider);
+
+  const program = anchor.workspace.MapRegistry as Program<MapRegistry>;
+  const user = provider.wallet.publicKey;
+
+  // PDA seeds
+  const MAP_REGISTRY_SEED = Buffer.from("fps.so map-registry");
+  const MAP_METADATA_SEED = Buffer.from("fps.so map-metadata");
+  const MAP_DATA_SEED = Buffer.from("fps.so map-data");
+  const USER_MAP_INDEX_SEED = Buffer.from("fps.so user-map-index");
+
+  // Derive PDAs
+  const [mapRegistryPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+    [MAP_REGISTRY_SEED],
+    program.programId
+  );
+
+  const [userMapIndexPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+    [USER_MAP_INDEX_SEED, user.toBuffer()],
+    program.programId
+  );
+
+  console.log("Program ID:", program.programId.toString());
+  console.log("Map Registry PDA:", mapRegistryPDA.toString());
+  console.log("User:", user.toString());
+
+  describe("Initialize Map Registry", () => {
+    it("Initializes the global map registry", async () => {
+      const tx = await program.methods
+        .initialize()
+        .rpc();
+
+      console.log("Initialize transaction signature:", tx);
+
+      // Fetch the registry account
+      const registry = await program.account.mapRegistry.fetch(mapRegistryPDA);
+
+      // Verify initial values
+      assertEqual(registry.defaultMapsCount, 0, "Default maps count should be 0");
+      assertEqual(registry.userMapsCount, 0, "User maps count should be 0");
+    });
+  });
+
+  describe("Create Maps", () => {
+    const mapId1 = "test-map-1";
+    const mapName1 = "Test Map One";
+    const mapDescription1 = "This is the first test map";
+    const mapData1 = Buffer.from("map_data_here_123");
+
+    let mapMetadataPDA1: anchor.web3.PublicKey;
+    let mapDataPDA1: anchor.web3.PublicKey;
+
+    before(() => {
+      [mapMetadataPDA1] = anchor.web3.PublicKey.findProgramAddressSync(
+        [MAP_METADATA_SEED, Buffer.from(mapId1)],
+        program.programId
+      );
+
+      [mapDataPDA1] = anchor.web3.PublicKey.findProgramAddressSync(
+        [MAP_DATA_SEED, Buffer.from(mapId1)],
+        program.programId
+      );
+    });
+
+    it("Creates a user map successfully", async () => {
+      const tx = await program.methods
+        .createMap(
+          mapId1,
+          mapName1,
+          mapDescription1,
+          false, // is_default = false (user map)
+          mapData1
+        )
+        .accounts({
+          mapRegistry: mapRegistryPDA,
+        })
+        .rpc();
+
+      console.log("Create map transaction signature:", tx);
+
+      // Fetch and verify map metadata
+      const metadata = await program.account.mapMetadata.fetch(mapMetadataPDA1);
+      assert.equal(metadata.mapId, mapId1, "Map ID should match");
+      assert.equal(metadata.name, mapName1, "Map name should match");
+      assert.equal(metadata.description, mapDescription1, "Map description should match");
+      assert.equal(metadata.creator.toString(), user.toString(), "Creator should be the user");
+      assert.equal(metadata.isDefault, false, "Should be a user map");
+      assert.isTrue(metadata.createdAt.gt(new anchor.BN(0)), "Created at timestamp should be set");
+      assert.equal(metadata.createdAt, metadata.updatedAt, `Created ${metadata.createdAt} and updated timestamps ${metadata.updatedAt} should match initially`);
+
+      // Fetch and verify map data
+      const mapDataAccount = await program.account.mapData.fetch(mapDataPDA1);
+      assert.deepEqual(
+        Buffer.from(mapDataAccount.data),
+        mapData1,
+        "Map data should match"
+      );
+
+      // Fetch and verify registry counters
+      const registry = await program.account.mapRegistry.fetch(mapRegistryPDA);
+      assert.equal(registry.userMapsCount, 1, "User maps count should be 1");
+      assert.equal(registry.defaultMapsCount, 0, "Default maps count should still be 0");
+
+      // Fetch and verify user map index
+      const userIndex = await program.account.userMapIndex.fetch(userMapIndexPDA);
+      assert.equal(userIndex.mapCount, 1, "User should have 1 map");
+      assert.equal(userIndex.mapIds[0], mapId1, "User's map list should contain the map ID");
+    });
+
+    it("Creates a default map successfully", async () => {
+      const mapId2 = "default-map-1";
+      const mapName2 = "Default Map";
+      const mapDescription2 = "This is a default map";
+      const mapData2 = Buffer.from("default_map_data");
+
+      const [mapMetadataPDA2] = anchor.web3.PublicKey.findProgramAddressSync(
+        [MAP_METADATA_SEED, Buffer.from(mapId2)],
+        program.programId
+      );
+
+      const tx = await program.methods
+        .createMap(
+          mapId2,
+          mapName2,
+          mapDescription2,
+          true, // is_default = true
+          mapData2
+        )
+        .accounts({
+          mapRegistry: mapRegistryPDA,
+        })
+        .rpc();
+
+      console.log("Create default map transaction signature:", tx);
+
+      // Fetch and verify map metadata
+      const metadata = await program.account.mapMetadata.fetch(mapMetadataPDA2);
+      assert.equal(metadata.isDefault, true, "Should be a default map");
+
+      // Fetch and verify registry counters
+      const registry = await program.account.mapRegistry.fetch(mapRegistryPDA);
+      assert.equal(registry.defaultMapsCount, 1, "Default maps count should be 1");
+      assert.equal(registry.userMapsCount, 1, "User maps count should still be 1");
+    });
+
+    it("Fails to create a map with data exceeding maximum size", async () => {
+      const mapId3 = "large-map";
+      const mapName3 = "Too Large Map";
+      const mapDescription3 = "This map has too much data";
+      // Create data larger than 10KB (10,000 bytes)
+      const largeMapData = Buffer.alloc(10001, "x");
+
+      try {
+        await program.methods
+          .createMap(
+            mapId3,
+            mapName3,
+            mapDescription3,
+            false,
+            (largeMapData)
+          )
+          .accounts({
+            mapRegistry: mapRegistryPDA,
+          })
+          .rpc();
+
+        assert.fail("Should have thrown an error for data too large");
+      } catch (error) {
+        assert.include(
+          error.toString(),
+          "mapDataTooLarge",
+          "Should throw MapDataTooLarge error"
+        );
+      }
+    });
+  });
+
+  describe("Update Map Metadata", () => {
+    const mapId = "update-test-map";
+    const originalName = "Original Name";
+    const originalDescription = "Original Description";
+    const mapData = Buffer.from("some_map_data");
+
+    let mapMetadataPDA: anchor.web3.PublicKey;
+
+    before(async () => {
+      [mapMetadataPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+        [MAP_METADATA_SEED, Buffer.from(mapId)],
+        program.programId
+      );
+
+      // Create the map first
+      await program.methods
+        .createMap(mapId, originalName, originalDescription, false, mapData)
+        .accounts({
+          mapRegistry: mapRegistryPDA,
+        })
+        .rpc();
+    });
+
+    it("Updates map name successfully", async () => {
+      const newName = "Updated Name";
+      const metadataBefore = await program.account.mapMetadata.fetch(mapMetadataPDA);
+
+      // Wait a moment to ensure timestamp changes
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const tx = await program.methods
+        .updateMapMetadata(newName, null)
+        .accounts({
+          mapMetadata: mapMetadataPDA,
+        })
+        .rpc();
+
+      console.log("Update map name transaction signature:", tx);
+
+      const metadataAfter = await program.account.mapMetadata.fetch(mapMetadataPDA);
+      assert.equal(metadataAfter.name, newName, "Name should be updated");
+      assert.equal(metadataAfter.description, originalDescription, "Description should remain unchanged");
+      assert.isTrue(
+        metadataAfter.updatedAt > metadataBefore.updatedAt,
+        "Updated at timestamp should be newer"
+      );
+    });
+
+    it("Updates map description successfully", async () => {
+      const newDescription = "Updated Description";
+
+      const tx = await program.methods
+        .updateMapMetadata(null, newDescription)
+        .accounts({
+          mapMetadata: mapMetadataPDA,
+        })
+        .rpc();
+
+      console.log("Update map description transaction signature:", tx);
+
+      const metadata = await program.account.mapMetadata.fetch(mapMetadataPDA);
+      assert.equal(metadata.description, newDescription, "Description should be updated");
+    });
+
+    it("Updates both name and description successfully", async () => {
+      const newName = "Both Updated Name";
+      const newDescription = "Both Updated Description";
+
+      const tx = await program.methods
+        .updateMapMetadata(newName, newDescription)
+        .accounts({
+          mapMetadata: mapMetadataPDA,
+        })
+        .rpc();
+
+      console.log("Update both fields transaction signature:", tx);
+
+      const metadata = await program.account.mapMetadata.fetch(mapMetadataPDA);
+      assert.equal(metadata.name, newName, "Name should be updated");
+      assert.equal(metadata.description, newDescription, "Description should be updated");
+    });
+
+    it("Fails to update metadata if not the creator", async () => {
+      // Create a different user
+      const otherUser = anchor.web3.Keypair.generate();
+
+      // Airdrop some SOL to the other user for transaction fees
+      const airdropSig = await provider.connection.requestAirdrop(
+        otherUser.publicKey,
+        1000000000 // 1 SOL
+      );
+      await provider.connection.confirmTransaction(airdropSig);
+
+      try {
+        await program.methods
+          .updateMapMetadata("Hacked Name", null)
+          .accounts({
+            mapMetadata: mapMetadataPDA,
+          })
+          .signers([otherUser])
+          .rpc();
+
+        assert.fail("Should have thrown an unauthorized error");
+      } catch (error) {
+        assert.include(
+          error.toString(),
+          "unauthorized",
+          "Should throw Unauthorized error"
+        );
+      }
+    });
+  });
+
+  describe("Update Map Data", () => {
+    const mapId = "data-update-test";
+    const mapName = "Data Update Test Map";
+    const mapDescription = "Testing data updates";
+    const originalData = Buffer.from("original_data");
+
+    let mapMetadataPDA: anchor.web3.PublicKey;
+    let mapDataPDA: anchor.web3.PublicKey;
+
+    before(async () => {
+      [mapMetadataPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+        [MAP_METADATA_SEED, Buffer.from(mapId)],
+        program.programId
+      );
+
+      [mapDataPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+        [MAP_DATA_SEED, Buffer.from(mapId)],
+        program.programId
+      );
+
+      // Create the map first
+      await program.methods
+        .createMap(mapId, mapName, mapDescription, false, originalData)
+        .accounts({
+          mapRegistry: mapRegistryPDA,
+        })
+        .rpc();
+    });
+
+    it("Updates map data successfully", async () => {
+      const newData = Buffer.from("updated_map_data_with_more_content");
+
+      const tx = await program.methods
+        .updateMapData(newData)
+        .accounts({
+          mapMetadata: mapMetadataPDA,
+          mapDataAccount: mapDataPDA,
+          
+        })
+        .rpc();
+
+      console.log("Update map data transaction signature:", tx);
+
+      const mapDataAccount = await program.account.mapData.fetch(mapDataPDA);
+      assert.deepEqual(
+        Buffer.from(mapDataAccount.data),
+        newData,
+        "Map data should be updated"
+      );
+    });
+
+    it("Updates to smaller data successfully (realloc)", async () => {
+      const smallerData = Buffer.from("small");
+
+      const tx = await program.methods
+        .updateMapData(smallerData)
+        .accounts({
+          mapMetadata: mapMetadataPDA,
+          mapDataAccount: mapDataPDA,
+        })
+        .rpc();
+
+      console.log("Update to smaller data transaction signature:", tx);
+
+      const mapDataAccount = await program.account.mapData.fetch(mapDataPDA);
+      assert.deepEqual(
+        Buffer.from(mapDataAccount.data),
+        smallerData,
+        "Map data should be updated to smaller size"
+      );
+    });
+
+    it("Fails to update data exceeding maximum size", async () => {
+      const largeData = Buffer.alloc(10001, "x");
+
+      try {
+        await program.methods
+          .updateMapData((largeData))
+          .accounts({
+            mapMetadata: mapMetadataPDA,
+            mapDataAccount: mapDataPDA,
+          })
+          .rpc();
+
+        assert.fail("Should have thrown an error for data too large");
+      } catch (error) {
+        assert.include(
+          error.toString(),
+          "mapDataTooLarge",
+          "Should throw MapDataTooLarge error"
+        );
+      }
+    });
+
+    it("Fails to update data if not the creator", async () => {
+      const otherUser = anchor.web3.Keypair.generate();
+
+      const airdropSig = await provider.connection.requestAirdrop(
+        otherUser.publicKey,
+        1000000000
+      );
+      await provider.connection.confirmTransaction(airdropSig);
+
+      const newData = Buffer.from("hacked_data");
+
+      try {
+        await program.methods
+          .updateMapData((newData))
+          .accounts({
+            mapMetadata: mapMetadataPDA,
+            mapDataAccount: mapDataPDA,
+          })
+          .signers([otherUser])
+          .rpc();
+
+        assert.fail("Should have thrown an unauthorized error");
+      } catch (error) {
+        assert.include(
+          error.toString(),
+          "unauthorized",
+          "Should throw Unauthorized error"
+        );
+      }
+    });
+  });
+
+  describe("Delete Map", () => {
+    const mapId = "delete-test-map";
+    const mapName = "Delete Test Map";
+    const mapDescription = "This map will be deleted";
+    const mapData = Buffer.from("temporary_data");
+
+    let mapMetadataPDA: anchor.web3.PublicKey;
+    let mapDataPDA: anchor.web3.PublicKey;
+
+    beforeEach(async () => {
+      [mapMetadataPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+        [MAP_METADATA_SEED, Buffer.from(mapId)],
+        program.programId
+      );
+
+      [mapDataPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+        [MAP_DATA_SEED, Buffer.from(mapId)],
+        program.programId
+      );
+
+      // Create the map
+      await program.methods
+        .createMap(mapId, mapName, mapDescription, false, (mapData))
+        .accounts({
+          mapRegistry: mapRegistryPDA,
+        })
+        .rpc();
+    });
+
+    it("Deletes a map successfully", async () => {
+      const userIndexBefore = await program.account.userMapIndex.fetch(userMapIndexPDA);
+      const userBalanceBefore = await provider.connection.getBalance(user);
+
+      const tx = await program.methods
+        .deleteMap()
+        .accounts({
+          mapMetadata: mapMetadataPDA,
+          mapDataAccount: mapDataPDA,
+          userMapIndex: userMapIndexPDA,
+          creator: user,
+        })
+        .rpc();
+
+      console.log("Delete map transaction signature:", tx);
+
+      // Verify accounts are closed
+      try {
+        await program.account.mapMetadata.fetch(mapMetadataPDA);
+        assert.fail("Map metadata account should be closed");
+      } catch (error) {
+        assert.include(error.toString(), "Account does not exist");
+      }
+
+      try {
+        await program.account.mapData.fetch(mapDataPDA);
+        assert.fail("Map data account should be closed");
+      } catch (error) {
+        assert.include(error.toString(), "Account does not exist");
+      }
+
+      // Verify user map index is updated
+      const userIndexAfter = await program.account.userMapIndex.fetch(userMapIndexPDA);
+      assert.equal(
+        userIndexAfter.mapCount,
+        userIndexBefore.mapCount - 1,
+        "User map count should decrease by 1"
+      );
+      assert.notInclude(
+        userIndexAfter.mapIds,
+        mapId,
+        "Map ID should be removed from user index"
+      );
+
+      // Verify rent was refunded (balance should increase)
+      const userBalanceAfter = await provider.connection.getBalance(user);
+      assert.isTrue(
+        userBalanceAfter > userBalanceBefore,
+        "User balance should increase due to rent refund"
+      );
+    });
+
+    it("Fails to delete map if not the creator", async () => {
+      const otherUser = anchor.web3.Keypair.generate();
+
+      const airdropSig = await provider.connection.requestAirdrop(
+        otherUser.publicKey,
+        1000000000
+      );
+      await provider.connection.confirmTransaction(airdropSig);
+
+      try {
+        await program.methods
+          .deleteMap()
+          .accounts({
+            mapMetadata: mapMetadataPDA,
+            mapDataAccount: mapDataPDA,
+            userMapIndex: userMapIndexPDA,
+            creator: user,
+          })
+          .signers([otherUser])
+          .rpc();
+
+        assert.fail("Should have thrown an unauthorized error");
+      } catch (error) {
+        // The transaction should fail
+        assert.isDefined(error);
+      }
+    });
+  });
+
+  describe("Multiple Maps Management", () => {
+    it("Creates and manages multiple maps for a single user", async () => {
+      const numMaps = 5;
+      const mapPDAs = [];
+
+      // Create multiple maps
+      for (let i = 0; i < numMaps; i++) {
+        const mapId = `multi-map-${i}`;
+        const mapName = `Map ${i}`;
+        const mapDescription = `Description for map ${i}`;
+        const mapData = Buffer.from(`data_${i}`);
+
+        const [mapMetadataPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+          [MAP_METADATA_SEED, Buffer.from(mapId)],
+          program.programId
+        );
+
+        const [mapDataPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+          [MAP_DATA_SEED, Buffer.from(mapId)],
+          program.programId
+        );
+
+        await program.methods
+          .createMap(mapId, mapName, mapDescription, false, (mapData))
+          .accounts({
+            mapRegistry: mapRegistryPDA,
+          })
+          .rpc();
+
+        mapPDAs.push({ mapId, mapMetadataPDA, mapDataPDA });
+      }
+
+      // Verify user map index
+      const userIndex = await program.account.userMapIndex.fetch(userMapIndexPDA);
+      assert.isAtLeast(
+        userIndex.mapCount,
+        numMaps,
+        `User should have at least ${numMaps} maps`
+      );
+
+      // Verify all maps exist
+      for (const { mapId, mapMetadataPDA } of mapPDAs) {
+        const metadata = await program.account.mapMetadata.fetch(mapMetadataPDA);
+        assert.equal(metadata.mapId, mapId, "Map ID should match");
+      }
+
+      console.log(`Successfully created and verified ${numMaps} maps`);
+    });
+  });
+});

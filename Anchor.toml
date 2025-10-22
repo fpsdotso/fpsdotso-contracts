@@ -7,11 +7,9 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-map_registry = "target/deploy/map_registry-keypair.json"
 token-minter = "HfPTAU1bZBHPqcpEGweinAH9zsPafYnnaxk4k5xsTU3M"
 
 [programs.localnet]
-map_registry = "target/deploy/map_registry-keypair.json"
 token-minter = "HfPTAU1bZBHPqcpEGweinAH9zsPafYnnaxk4k5xsTU3M"
 
 
