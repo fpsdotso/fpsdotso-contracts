@@ -69,9 +69,3 @@ pub enum SetReadyStateError {
     #[msg("Arithmetic overflow")]
     ArithmeticOverflow,
 }
-
-#[error_code]
-pub enum UndelegatePlayerError {
-    #[msg("Player not registered")]
-    PlayerNotRegistered,
-}
