@@ -10,7 +10,7 @@ pub use error::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("3a1k5qAbXzzvJL9HY47P4CMQ19rhvpyUdYXtq3jLzAa7");
+declare_id!("FK438BMUMqFqZj33Argueh89XGTwxEPXCEU7JgeMXLvA");
 
 #[program]
 pub mod matchmaking {
