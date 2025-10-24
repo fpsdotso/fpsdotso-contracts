@@ -1,7 +1,8 @@
 [workspace]
 members = [
     "programs/game",
-    "programs/map_registry"
+    "programs/map_registry",
+    "programs/matchmaking"
 ]
 resolver = "2"
 
