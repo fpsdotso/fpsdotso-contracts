@@ -3,7 +3,7 @@ use ephemeral_rollups_sdk::anchor::{commit, ephemeral};
 use ephemeral_rollups_sdk::ephem::commit_accounts;
 use std::io::Write as IoWrite;
 
-declare_id!("FZFQ2izwmvWzES3Ajn1BtMd5UBbt8UZ7EXgR63hK6sSE");
+declare_id!("7TE8ZZqRyFMR7K3ocVCL2hBNfW29cH57pMTvj1qTj8cX");
 
 pub const PLAYER_SEED: &[u8] = b"player";
 
