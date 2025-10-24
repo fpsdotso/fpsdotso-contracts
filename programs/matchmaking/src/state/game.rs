@@ -13,7 +13,7 @@ pub struct Game {
     pub current_players_team_b: u8,
     pub winning_team: Option<u8>,   // Winning team (0=draw, 1=team_a, 2=team_b)
     pub match_type: u8,             // Match type (1=team_deathmatch) for now
-    pub map_name: String,
+    pub map_id: String,             // Map ID reference
 
     // NEW: Lobby features
     pub lobby_name: String,

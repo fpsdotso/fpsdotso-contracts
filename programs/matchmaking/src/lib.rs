@@ -20,8 +20,8 @@ pub mod matchmaking {
         init_player::handler(ctx, args)
     }
 
-    pub fn init_game(ctx: Context<InitGame>) -> Result<()> {
-        init_game::handler(ctx)
+    pub fn init_game(ctx: Context<InitGame>, map_id: String) -> Result<()> {
+        init_game::handler(ctx, map_id)
     }
 
     pub fn join_game(ctx: Context<JoinGame>) -> Result<()> {

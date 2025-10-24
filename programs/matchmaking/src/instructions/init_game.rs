@@ -2,14 +2,14 @@ use anchor_lang::prelude::*;
 use crate::error::InitGameError;
 use crate::constants::{GAME_SEED, PLAYER_SEED, MAX_PLAYERS_PER_TEAM};
 
-pub fn handler(ctx: Context<InitGame>) -> Result<()> {
+pub fn handler(ctx: Context<InitGame>, map_id: String) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let player = &mut ctx.accounts.player;
     let clock = Clock::get()?;
-    
+
     require!(player.has_logged_in, InitGameError::PlayerNotRegistered);
     require!(player.current_game.is_none(), InitGameError::PlayerAlreadyInGame);
-    
+
     // Initialize game state - the game account itself is the PDA that tracks the room
     game.match_start_timestamp = clock.unix_timestamp;
     game.game_state = 0; // waiting state
@@ -20,7 +20,7 @@ pub fn handler(ctx: Context<InitGame>) -> Result<()> {
     game.match_duration = 300; // 5 minutes
     game.max_players_per_team = MAX_PLAYERS_PER_TEAM;
     game.match_type = 1; // team deathmatch
-    game.map_name = "New Arena".to_string();
+    game.map_id = map_id;
     
     // NEW: Initialize lobby features
     game.lobby_name = "New Game Room".to_string();
@@ -58,8 +58,9 @@ pub struct InitGame<'info> {
         init,
         payer = authority,
         space = 8 + // discriminator
-                4 + 4 + 4 + 8 + 1 + 8 + 1 + 1 + 1 + 1 + 1 + // basic game fields
-                (4 + 50) + (4 + 32) + // map_name + lobby_name strings with length prefix
+                4 + 4 + 4 + 8 + 1 + 8 + 1 + 1 + 1 + 1 + 1 + // basic game fields (scores, duration, timestamps, state, team counts, winning_team, match_type)
+                (4 + 50) + // map_id String (4 byte length + up to 50 chars)
+                (4 + 32) + // lobby_name string with length prefix
                 32 + // created_by pubkey
                 1 + 1 + 1 + // is_private + ready_players + map_selection
                 (4 + 32 * 5) + (4 + 32 * 5), // team_a_players Vec (4 byte length + max 5 pubkeys) + team_b_players Vec
