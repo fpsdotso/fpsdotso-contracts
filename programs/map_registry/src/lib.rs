@@ -51,8 +51,8 @@ pub mod map_registry {
     /// * `name` - Display name of the map
     /// * `description` - Description of the map
     /// * `is_default` - Whether this is a default/official map or user-created
-    /// * `map_data` - The actual map data as a byte array (level layout, objects, etc.)
-    /// 
+    /// * `map_data` - The actual map data as a vector of MapObject (level layout, objects, etc.)
+    ///
     /// # Accounts
     /// * `map_metadata` - New PDA to store map metadata
     /// * `map_data_account` - New PDA to store actual map data
@@ -66,7 +66,7 @@ pub mod map_registry {
         name: String,
         description: String,
         is_default: bool,
-        map_data: Vec<u8>,
+        map_data: Vec<MapObject>,
     ) -> Result<()> {
         let map_metadata = &mut ctx.accounts.map_metadata;
         let map_registry = &mut ctx.accounts.map_registry;
@@ -89,7 +89,7 @@ pub mod map_registry {
             map_data.len() <= MapData::MAX_SIZE,
             ErrorCode::MapDataTooLarge
         );
-        map_data_account.data = map_data;
+        map_data_account.objects = map_data;
 
         // Update global counters based on map type
         if is_default {
@@ -163,19 +163,19 @@ pub mod map_registry {
     /// # Arguments
     /// * `ctx` - The context containing map_metadata and map_data_account
     /// * `map_data` - The new map data to replace the existing data
-    /// 
+    ///
     /// # Accounts
     /// * `map_metadata` - Used to verify the creator (read-only)
     /// * `map_data_account` - The data account to update (will be reallocated if needed)
     /// * `user` - Must be the original creator of the map
     /// * `system_program` - Needed for reallocation
-    /// 
+    ///
     /// # Security
     /// * Checks that the signer is the map creator before allowing updates
     /// * Validates new data size is within limits
     pub fn update_map_data(
         ctx: Context<UpdateMapData>,
-        map_data: Vec<u8>,
+        map_data: Vec<MapObject>,
     ) -> Result<()> {
         let map_metadata = &ctx.accounts.map_metadata;
         let map_data_account = &mut ctx.accounts.map_data_account;
@@ -191,10 +191,10 @@ pub mod map_registry {
             map_data.len() <= MapData::MAX_SIZE,
             ErrorCode::MapDataTooLarge
         );
-        
+
         // Replace the old data with new data
         // The account is automatically resized via realloc in the Context
-        map_data_account.data = map_data;
+        map_data_account.objects = map_data;
 
         Ok(())
     }
@@ -277,7 +277,7 @@ pub struct InitializeMapRegistry<'info> {
 
 /// Context for creating a new map
 #[derive(Accounts)]
-#[instruction(map_id: String, name: String, description: String, is_default: bool, map_data: Vec<u8>)]
+#[instruction(map_id: String, name: String, description: String, is_default: bool, map_data: Vec<MapObject>)]
 pub struct CreateMap<'info> {
     /// New PDA account to store map metadata (name, creator, timestamps, etc.)
     /// Derived from [MAP_METADATA_SEED, map_id]
@@ -293,10 +293,11 @@ pub struct CreateMap<'info> {
     /// New PDA account to store the actual map data (level layout, objects, etc.)
     /// Derived from [MAP_DATA_SEED, map_id]
     /// Space is calculated dynamically based on the size of map_data
+    /// Each MapObject is 19 bytes: 1 (enum) + 6 (pos) + 6 (rot) + 3 (scale) + 3 (color)
     #[account(
         init,
         payer = user,
-        space = 8 + 4 + map_data.len(), // 8 (discriminator) + 4 (vec length) + data
+        space = 8 + 4 + (map_data.len() * 19), // 8 (discriminator) + 4 (vec length) + (objects * 19 bytes each)
         seeds = [MAP_DATA_SEED, map_id.as_bytes()],
         bump
     )]
@@ -339,7 +340,7 @@ pub struct UpdateMapMetadata<'info> {
 
 /// Context for updating map data
 #[derive(Accounts)]
-#[instruction(map_data: Vec<u8>)]
+#[instruction(map_data: Vec<MapObject>)]
 pub struct UpdateMapData<'info> {
     /// The map's metadata (used to verify the creator)
     /// Seeds constraint ensures we're working with the correct map
@@ -351,9 +352,10 @@ pub struct UpdateMapData<'info> {
     
     /// The map's data account to update
     /// Uses realloc to resize the account if the new data is a different size
+    /// Each MapObject is 19 bytes: 1 (enum) + 6 (pos) + 6 (rot) + 3 (scale) + 3 (color)
     #[account(
         mut,
-        realloc = 8 + 4 + map_data.len(),
+        realloc = 8 + 4 + (map_data.len() * 19),
         realloc::payer = user,
         realloc::zero = false,
         seeds = [MAP_DATA_SEED, map_metadata.map_id.as_bytes()],
@@ -456,12 +458,55 @@ pub struct MapMetadata {
     pub is_default: bool,
 }
 
+/// Model types available for map objects
+#[derive(Debug, Clone, Copy, PartialEq, Eq, AnchorSerialize, AnchorDeserialize)]
+pub enum ModelType {
+    Cube,
+    Rectangle,
+    Triangle,
+    Sphere,
+    Cylinder,
+    Plane,
+    SpawnPointBlue,
+    SpawnPointRed,
+}
+
+/// Compact representation of a 3D object in the map
+/// Uses 16-bit integers for positions and rotations to save space
+/// Borsh-serialized for Solana/Anchor compatibility
+#[derive(Debug, Clone, AnchorSerialize, AnchorDeserialize)]
+pub struct MapObject {
+    /// Model type
+    pub model_type: ModelType,
+
+    /// Position (stored as i16, converted to/from f32)
+    /// Range: -100.0 to 100.0 (scaled from i16 range)
+    pub pos_x: i16,
+    pub pos_y: i16,
+    pub pos_z: i16,
+
+    /// Rotation in degrees (0-360, stored as u16)
+    pub rot_x: u16,
+    pub rot_y: u16,
+    pub rot_z: u16,
+
+    /// Scale (stored as u8, divided by 10 to get actual scale)
+    /// Range: 0.1 to 25.5
+    pub scale_x: u8,
+    pub scale_y: u8,
+    pub scale_z: u8,
+
+    /// Color (RGB)
+    pub color_r: u8,
+    pub color_g: u8,
+    pub color_b: u8,
+}
+
 /// The actual map data (level layout, tiles, objects, etc.)
 #[account]
 pub struct MapData {
-    /// Raw byte data representing the map
-    /// Format is application-specific (could be JSON, binary format, etc.)
-    pub data: Vec<u8>,
+    /// Vector of map objects representing the 3D scene
+    pub objects: Vec<MapObject>,
 }
 
 impl MapData {
