@@ -28,6 +28,8 @@ pub enum JoinGameError {
     GameAlreadyStarted,
     #[msg("Game is full")]
     GameFull,
+    #[msg("Team is full - maximum 5 players per team")]
+    TeamFull,
     #[msg("Invalid game state")]
     InvalidGameState,
 }
@@ -38,6 +40,8 @@ pub enum LeaveGameError {
     PlayerNotInGame,
     #[msg("Player not in this specific game")]
     PlayerNotInThisGame,
+    #[msg("Arithmetic overflow")]
+    ArithmeticOverflow,
 }
 
 #[error_code]

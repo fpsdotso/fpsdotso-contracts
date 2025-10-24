@@ -28,12 +28,24 @@ pub fn handler(ctx: Context<InitGame>) -> Result<()> {
     game.is_private = false;
     game.ready_players = 0;
     game.map_selection = 0;
-    
-    // Set player as the first player in the game
-    player.team = 0; // No team assigned yet
-    // Set the current game PDA for the player to track this room
-    player.current_game = Some(ctx.accounts.game.key());
-    
+
+    // Initialize player tracking vectors
+    game.team_a_players = Vec::new();
+    game.team_b_players = Vec::new();
+
+    // Add the room creator as the first player in Team A
+    let game_key = game.key();
+    let player_key = player.key();
+
+    player.team = 1; // Assign to Team A
+    player.is_alive = true;
+    player.is_ready = false;
+    player.current_game = Some(game_key);
+
+    // Add creator to Team A players
+    game.team_a_players.push(player_key);
+    game.current_players_team_a = 1;
+
     // Increment the game counter for this player
     player.game_counter += 1;
 
@@ -45,7 +57,12 @@ pub struct InitGame<'info> {
     #[account(
         init,
         payer = authority,
-        space = 8 + 4 + 4 + 4 + 8 + 1 + 8 + 1 + 1 + 1 + 1 + 1 + 4 + 50 + 32 + 32 + 1 + 1 + 1, // discriminator + all fields
+        space = 8 + // discriminator
+                4 + 4 + 4 + 8 + 1 + 8 + 1 + 1 + 1 + 1 + 1 + // basic game fields
+                (4 + 50) + (4 + 32) + // map_name + lobby_name strings with length prefix
+                32 + // created_by pubkey
+                1 + 1 + 1 + // is_private + ready_players + map_selection
+                (4 + 32 * 5) + (4 + 32 * 5), // team_a_players Vec (4 byte length + max 5 pubkeys) + team_b_players Vec
         seeds = [GAME_SEED.as_bytes(), authority.key().as_ref(), &player.game_counter.to_le_bytes()],
         bump
     )]
