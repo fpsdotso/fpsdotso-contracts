@@ -35,4 +35,8 @@ pub mod matchmaking {
     pub fn start_game(ctx: Context<StartGame>) -> Result<()> {
         start_game::handler(ctx)
     }
+
+    pub fn set_ready_state(ctx: Context<SetReadyState>, is_ready: bool) -> Result<()> {
+        set_ready_state::handler(ctx, is_ready)
+    }
 }

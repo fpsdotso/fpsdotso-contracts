@@ -55,3 +55,15 @@ pub enum StartGameError {
     #[msg("Only lobby owner can start the game")]
     NotLobbyOwner,
 }
+
+#[error_code]
+pub enum SetReadyStateError {
+    #[msg("Player not registered")]
+    PlayerNotRegistered,
+    #[msg("Player not in a game")]
+    PlayerNotInGame,
+    #[msg("Player not in this specific game")]
+    PlayerNotInThisGame,
+    #[msg("Game has already started")]
+    GameAlreadyStarted,
+}
