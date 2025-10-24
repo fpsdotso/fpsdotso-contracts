@@ -39,4 +39,8 @@ pub mod matchmaking {
     pub fn set_ready_state(ctx: Context<SetReadyState>, is_ready: bool) -> Result<()> {
         set_ready_state::handler(ctx, is_ready)
     }
+
+    pub fn undelegate_player(ctx: Context<UndelegatePlayer>) -> Result<()> {
+        undelegate_player::handler(ctx)
+    }
 }

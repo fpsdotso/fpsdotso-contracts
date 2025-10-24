@@ -66,4 +66,12 @@ pub enum SetReadyStateError {
     PlayerNotInThisGame,
     #[msg("Game has already started")]
     GameAlreadyStarted,
+    #[msg("Arithmetic overflow")]
+    ArithmeticOverflow,
+}
+
+#[error_code]
+pub enum UndelegatePlayerError {
+    #[msg("Player not registered")]
+    PlayerNotRegistered,
 }

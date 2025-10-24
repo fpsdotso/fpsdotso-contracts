@@ -37,7 +37,15 @@ pub fn handler(ctx: Context<InitPlayer>, args: Vec<u8>) -> Result<()> {
     player.level = 1;
     player.is_ready = false;
     player.game_counter = 0;
-    
+
+    // Initialize position and rotation to default values
+    player.position_x = 0.0;
+    player.position_y = 0.0;
+    player.position_z = 0.0;
+    player.rotation_x = 0.0;
+    player.rotation_y = 0.0;
+    player.rotation_z = 0.0;
+
     Ok(())
 }
 
@@ -46,7 +54,12 @@ pub struct InitPlayer<'info> {
     #[account(
         init,
         payer = authority,
-        space = 8 + 32 + 4 + 32 + 1 + 1 + 1 + 1 + 8 + 1 + 8 + 4 + 4 + 1 + 4, // discriminator + all fields
+        space = 8 + // discriminator
+                32 + // authority
+                (4 + 32) + // username string
+                1 + 1 + (1 + 32) + 1 + 8 + 4 + 4 + // has_logged_in, team, current_game, is_alive, last_login_timestamp, total_matches_played, level
+                1 + 4 + // is_ready, game_counter
+                4 + 4 + 4 + 4 + 4 + 4, // position (x,y,z) + rotation (x,y,z) - 6 f32 fields
         seeds = [PLAYER_SEED.as_bytes(), authority.key().as_ref()],
         bump
     )]
