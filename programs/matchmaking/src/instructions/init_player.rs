@@ -25,6 +25,8 @@ pub fn handler(ctx: Context<InitPlayer>, args: Vec<u8>) -> Result<()> {
     require!(username.len() >= 3 && username.len() <= 32, InitPlayerError::InvalidUsernameLength);
     
     player.authority = ctx.accounts.authority.key();
+    player.signing_key = ctx.accounts.signing_key.key();
+    msg!("Player Signing Key is already ready {}", player.signing_key);
     player.username = username;
     player.has_logged_in = true;
 
@@ -55,7 +57,7 @@ pub struct InitPlayer<'info> {
         init,
         payer = authority,
         space = 8 + // discriminator
-                32 + // authority
+                32 + 32 +// authority + signer
                 (4 + 32) + // username string
                 1 + 1 + (1 + 32) + 1 + 8 + 4 + 4 + // has_logged_in, team, current_game, is_alive, last_login_timestamp, total_matches_played, level
                 1 + 4 + // is_ready, game_counter
@@ -67,6 +69,9 @@ pub struct InitPlayer<'info> {
     
     #[account(mut)]
     pub authority: Signer<'info>,
-    
+
+    /// CHECK: Signing key address provided by the user - no validation needed as we only store the pubkey
+    pub signing_key: AccountInfo<'info>,
+
     pub system_program: Program<'info, System>,
 }

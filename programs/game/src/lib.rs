@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use ephemeral_rollups_sdk::anchor::{commit, ephemeral};
 use ephemeral_rollups_sdk::ephem::commit_accounts;
 
-declare_id!("7TE8ZZqRyFMR7K3ocVCL2hBNfW29cH57pMTvj1qTj8cX");
+declare_id!("4pfYuQkFmGXPFMjBNmYUstnC3jjgjxcBS8rSk8qcUUnE");
 
 pub const PLAYER_SEED: &[u8] = b"player";
 

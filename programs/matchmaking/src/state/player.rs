@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 #[account]
 pub struct Player {
     pub authority: Pubkey,
+    pub signing_key: Pubkey,
     pub username: String,
     pub has_logged_in: bool,
     pub team: u8,                    // 0 = no team, 1 = Team A, 2 = Team B
