@@ -70,16 +70,25 @@ pub mod game {
         }
 
         // Process movement based on updated rotation
+        // Coordinate system: +X=right, +Y=up, +Z=forward
+        // Yaw (rotation_y) rotates around Y axis
+        // Only yaw affects movement direction (FPS style - pitch is for aiming only)
         let move_speed = 5.0;
         let movement = move_speed * delta_time;
 
         let yaw = player.rotation_y;
-        let forward_x = yaw.sin();
-        let forward_z = yaw.cos();
-        const HALF_PI: f32 = std::f32::consts::FRAC_PI_2;
-        let right_x = (yaw + HALF_PI).sin();
-        let right_z = (yaw + HALF_PI).cos();
 
+        // Calculate movement directions relative to camera rotation on horizontal plane
+        // Raylib convention: rotation_y = 0° → looking at +X, rotation_y = 90° → looking at +Z
+        // Forward direction: move in the direction camera is facing
+        let forward_x = yaw.cos();
+        let forward_z = yaw.sin();
+
+        // Right direction: 90 degrees clockwise from forward (when viewed from above)
+        let right_x = -yaw.sin();
+        let right_z = yaw.cos();
+
+        // Apply movement based on input
         if forward {
             player.position_x += forward_x * movement;
             player.position_z += forward_z * movement;
