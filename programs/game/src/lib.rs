@@ -41,33 +41,20 @@ pub mod game {
         backward: bool,
         left: bool,
         right: bool,
-        delta_x: f32,
-        delta_y: f32,
+        rotation_x: f32,
+        rotation_y: f32,
+        rotation_z: f32,
         delta_time: f32,
-        sensitivity: f32,
         _game_id: Pubkey,
     ) -> Result<()> {
         let player = &mut ctx.accounts.game_player;
         let clock = Clock::get()?;
 
-        // Process rotation first
-        let rotation_x_delta = delta_y * sensitivity;
-        let rotation_y_delta = delta_x * sensitivity;
-
-        player.rotation_y += rotation_y_delta;
-        player.rotation_x += rotation_x_delta;
-
-        // Clamp pitch to prevent camera flipping
-        const MAX_PITCH: f32 = std::f32::consts::FRAC_PI_2 - 0.1; // 89 degrees
-        player.rotation_x = player.rotation_x.clamp(-MAX_PITCH, MAX_PITCH);
-
-        // Normalize yaw to 0-2PI range
-        const TWO_PI: f32 = std::f32::consts::PI * 2.0;
-        if player.rotation_y > TWO_PI {
-            player.rotation_y -= TWO_PI;
-        } else if player.rotation_y < 0.0 {
-            player.rotation_y += TWO_PI;
-        }
+        // Store rotation values directly from frontend
+        // Frontend calculates rotation, contract just stores it
+        player.rotation_x = rotation_x;
+        player.rotation_y = rotation_y;
+        player.rotation_z = rotation_z;
 
         // Process movement based on updated rotation
         // Coordinate system: +X=right, +Y=up, +Z=forward
@@ -186,10 +173,10 @@ pub mod game {
     backward: bool,
     left: bool,
     right: bool,
-    delta_x: f32,
-    delta_y: f32,
+    rotation_x: f32,
+    rotation_y: f32,
+    rotation_z: f32,
     delta_time: f32,
-    sensitivity: f32,
     _game_id: Pubkey
 )]
 pub struct ProcessPlayerInput<'info> {
