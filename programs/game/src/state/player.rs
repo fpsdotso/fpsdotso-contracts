@@ -29,6 +29,9 @@ pub struct GamePlayer {
     /// Team (0 or 1)
     pub team: u8,
 
+    /// Is spectator (cannot shoot or be shot)
+    pub is_spectator: bool,
+
     /// Game stats
     pub kills: u32,
     pub deaths: u32,
@@ -36,6 +39,10 @@ pub struct GamePlayer {
 
     /// Last update timestamp
     pub last_update: i64,
+
+    /// Timestamp when player died (0 if alive)
+    /// Used to enforce respawn cooldown
+    pub death_timestamp: i64,
 
     /// Bump seed for PDA
     pub bump: u8,
@@ -50,7 +57,9 @@ impl GamePlayer {
         1 + // health
         1 + // is_alive
         1 + // team
+        1 + // is_spectator
         4 + 4 + 4 + // kills, deaths, score
         8 + // last_update
+        8 + // death_timestamp
         1; // bump
 }

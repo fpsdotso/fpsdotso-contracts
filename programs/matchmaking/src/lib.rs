@@ -28,6 +28,10 @@ pub mod matchmaking {
         join_game::handler(ctx)
     }
 
+    pub fn join_as_spectator(ctx: Context<JoinAsSpectator>) -> Result<()> {
+        join_as_spectator::handler(ctx)
+    }
+
     pub fn leave_game(ctx: Context<LeaveGame>) -> Result<()> {
         leave_game::handler(ctx)
     }

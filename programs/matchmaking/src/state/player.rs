@@ -15,6 +15,7 @@ pub struct Player {
 
     // NEW: Lobby state
     pub is_ready: bool,
+    pub is_spectator: bool,  // True if player is spectating instead of playing
 
     // Game creation counter for unique Game PDA derivation
     pub game_counter: u32,

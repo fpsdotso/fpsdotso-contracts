@@ -15,6 +15,8 @@ pub fn handler(ctx: Context<InitGame>, map_id: String) -> Result<()> {
     game.game_state = 0; // waiting state
     game.team_a_score = 0;
     game.team_b_score = 0;
+    game.team_a_kills = 0;
+    game.team_b_kills = 0;
     game.current_players_team_a = 0;
     game.current_players_team_b = 0;
     game.match_duration = 300; // 5 minutes
@@ -58,7 +60,7 @@ pub struct InitGame<'info> {
         init,
         payer = authority,
         space = 8 + // discriminator
-                4 + 4 + 4 + 8 + 1 + 8 + 1 + 1 + 1 + 1 + 1 + // basic game fields (scores, duration, timestamps, state, team counts, winning_team, match_type)
+                4 + 4 + 4 + 4 + 4 + 8 + 1 + 8 + 1 + 1 + 1 + 1 + 1 + // basic game fields (scores, kills, duration, timestamps, state, team counts, winning_team, match_type)
                 (4 + 50) + // map_id String (4 byte length + up to 50 chars)
                 (4 + 32) + // lobby_name string with length prefix
                 32 + // created_by pubkey

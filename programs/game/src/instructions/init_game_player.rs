@@ -7,6 +7,7 @@ pub fn handler(
     ctx: Context<InitGamePlayer>,
     game_id: Pubkey,
     team: u8,
+    is_spectator: bool,
     spawn_x: f32,
     spawn_y: f32,
     spawn_z: f32,
@@ -28,9 +29,10 @@ pub fn handler(
     game_player.rotation_z = 0.0;
 
     // Set initial game state
-    game_player.health = 100;
-    game_player.is_alive = true;
+    game_player.health = if is_spectator { 0 } else { 100 };
+    game_player.is_alive = !is_spectator; // Spectators are not alive
     game_player.team = team;
+    game_player.is_spectator = is_spectator;
 
     // Initialize stats
     game_player.kills = 0;
@@ -38,6 +40,7 @@ pub fn handler(
     game_player.score = 0;
 
     game_player.last_update = clock.unix_timestamp;
+    game_player.death_timestamp = 0; // 0 means player is alive
     game_player.bump = ctx.bumps.game_player;
 
     msg!(

@@ -4,6 +4,8 @@ use anchor_lang::prelude::*;
 pub struct Game {
     pub team_a_score: u32,
     pub team_b_score: u32,
+    pub team_a_kills: u32,  // Total kills by team A
+    pub team_b_kills: u32,  // Total kills by team B
     pub match_duration: u32,
     pub match_start_timestamp: i64,
     pub match_end_timestamp: Option<i64>,

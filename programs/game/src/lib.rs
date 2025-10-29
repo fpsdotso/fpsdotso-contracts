@@ -24,11 +24,12 @@ pub mod game {
         ctx: Context<InitGamePlayer>,
         game_id: Pubkey,
         team: u8,
+        is_spectator: bool,
         spawn_x: f32,
         spawn_y: f32,
         spawn_z: f32,
     ) -> Result<()> {
-        init_game_player::handler(ctx, game_id, team, spawn_x, spawn_y, spawn_z)
+        init_game_player::handler(ctx, game_id, team, is_spectator, spawn_x, spawn_y, spawn_z)
     }
 
     /// Combined input processing - movement and rotation in one call
@@ -164,6 +165,28 @@ pub mod game {
     /// This should be called when game ends
     pub fn undelegate_game_player(ctx: Context<UndelegateGamePlayer>) -> Result<()> {
         undelegate_game_player::handler(ctx)
+    }
+
+    /// Shoot and check for hits on other players
+    /// Pass other player accounts in remaining_accounts to check for hits
+    /// Automatically awards kill and score if target is killed
+    pub fn shoot(ctx: Context<Shoot>, damage: u8, kill_score: u32) -> Result<()> {
+        shoot::handler(ctx, damage, kill_score)
+    }
+
+    /// Award a kill to the shooter (called after successful kill)
+    pub fn award_kill(ctx: Context<AwardKill>, score_points: u32) -> Result<()> {
+        award_kill::handler(ctx, score_points)
+    }
+
+    /// Respawn a dead player at spawn point
+    pub fn respawn_player(
+        ctx: Context<RespawnPlayer>,
+        spawn_x: f32,
+        spawn_y: f32,
+        spawn_z: f32,
+    ) -> Result<()> {
+        respawn_player::handler(ctx, spawn_x, spawn_y, spawn_z)
     }
 }
 

@@ -38,6 +38,7 @@ pub fn handler(ctx: Context<InitPlayer>, args: Vec<u8>) -> Result<()> {
     player.total_matches_played = 0;
     player.level = 1;
     player.is_ready = false;
+    player.is_spectator = false;  // Not a spectator by default
     player.game_counter = 0;
 
     // Initialize position and rotation to default values
@@ -60,7 +61,7 @@ pub struct InitPlayer<'info> {
                 32 + 32 +// authority + signer
                 (4 + 32) + // username string
                 1 + 1 + (1 + 32) + 1 + 8 + 4 + 4 + // has_logged_in, team, current_game, is_alive, last_login_timestamp, total_matches_played, level
-                1 + 4 + // is_ready, game_counter
+                1 + 1 + 4 + // is_ready, is_spectator, game_counter
                 4 + 4 + 4 + 4 + 4 + 4, // position (x,y,z) + rotation (x,y,z) - 6 f32 fields
         seeds = [PLAYER_SEED.as_bytes(), authority.key().as_ref()],
         bump
