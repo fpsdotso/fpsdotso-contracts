@@ -41,6 +41,11 @@ pub fn handler(
 
     game_player.last_update = clock.unix_timestamp;
     game_player.death_timestamp = 0; // 0 means player is alive
+
+    // Initialize gun state
+    game_player.bullet_count = 10; // Start with full magazine
+    game_player.reload_start_timestamp = 0; // Not reloading
+
     game_player.bump = ctx.bumps.game_player;
 
     msg!(

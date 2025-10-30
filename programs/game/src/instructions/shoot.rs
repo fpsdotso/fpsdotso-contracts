@@ -1,12 +1,24 @@
 use anchor_lang::prelude::*;
 use crate::state::GamePlayer;
 
+#[error_code]
+pub enum ShootError {
+    #[msg("No bullets left. Reload your gun first.")]
+    NoBulletsLeft,
+}
+
 /// Shoot and check if any player is hit
 /// Uses ray-box intersection to detect hits
 /// Automatically awards kill and score if target is killed
 pub fn handler(ctx: Context<Shoot>, damage: u8, kill_score: u32) -> Result<()> {
     let shooter = &mut ctx.accounts.shooter;
     let clock = Clock::get()?;
+
+    // Check if player has bullets
+    require!(shooter.bullet_count > 0, ShootError::NoBulletsLeft);
+
+    // Reduce bullet count
+    shooter.bullet_count = shooter.bullet_count.saturating_sub(1);
 
     // Get shooter's position and rotation
     let origin_x = shooter.position_x;
@@ -32,14 +44,15 @@ pub fn handler(ctx: Context<Shoot>, damage: u8, kill_score: u32) -> Result<()> {
     let dir_z = dir_z / length;
 
     msg!(
-        "Player {} shooting from ({:.2}, {:.2}, {:.2}) dir ({:.2}, {:.2}, {:.2})",
+        "Player {} shooting from ({:.2}, {:.2}, {:.2}) dir ({:.2}, {:.2}, {:.2}) - Bullets left: {}",
         shooter.authority,
         origin_x,
         origin_y,
         origin_z,
         dir_x,
         dir_y,
-        dir_z
+        dir_z,
+        shooter.bullet_count
     );
 
     // Check all other players for hits

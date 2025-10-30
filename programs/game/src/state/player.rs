@@ -44,6 +44,13 @@ pub struct GamePlayer {
     /// Used to enforce respawn cooldown
     pub death_timestamp: i64,
 
+    /// Current bullet count (max 10)
+    pub bullet_count: u8,
+
+    /// Timestamp when reload started (0 if not reloading)
+    /// Reload takes 1.5 seconds
+    pub reload_start_timestamp: i64,
+
     /// Bump seed for PDA
     pub bump: u8,
 }
@@ -61,5 +68,7 @@ impl GamePlayer {
         4 + 4 + 4 + // kills, deaths, score
         8 + // last_update
         8 + // death_timestamp
+        1 + // bullet_count
+        8 + // reload_start_timestamp
         1; // bump
 }

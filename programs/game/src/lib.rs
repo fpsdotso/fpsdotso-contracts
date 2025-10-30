@@ -188,6 +188,12 @@ pub mod game {
     ) -> Result<()> {
         respawn_player::handler(ctx, spawn_x, spawn_y, spawn_z)
     }
+
+    /// Reload the gun (instantly refills to 10 bullets)
+    /// Client should enforce 1.5 second cooldown
+    pub fn reload(ctx: Context<Reload>) -> Result<()> {
+        reload::handler(ctx)
+    }
 }
 
 #[derive(Accounts)]

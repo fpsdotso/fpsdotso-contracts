@@ -47,6 +47,10 @@ pub fn handler(
     player.rotation_y = 0.0;
     player.rotation_z = 0.0;
 
+    // Reset gun state
+    player.bullet_count = 10; // Full magazine on respawn
+    player.reload_start_timestamp = 0; // Not reloading
+
     player.last_update = clock.unix_timestamp;
 
     msg!(
