@@ -188,6 +188,18 @@ pub mod game {
     ) -> Result<()> {
         respawn_player::handler(ctx, spawn_x, spawn_y, spawn_z)
     }
+
+    /// Start the reload process
+    /// Records timestamp when reload started
+    pub fn start_reload(ctx: Context<StartReload>) -> Result<()> {
+        reload::start_reload_handler(ctx)
+    }
+
+    /// Complete the reload process
+    /// Refills magazine to 10 bullets after 0.5 seconds have passed
+    pub fn reload(ctx: Context<Reload>) -> Result<()> {
+        reload::reload_handler(ctx)
+    }
 }
 
 #[derive(Accounts)]
