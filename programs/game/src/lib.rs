@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use ephemeral_rollups_sdk::anchor::{commit, ephemeral};
 use ephemeral_rollups_sdk::ephem::commit_accounts;
 
-declare_id!("4pfYuQkFmGXPFMjBNmYUstnC3jjgjxcBS8rSk8qcUUnE");
+declare_id!("BxRTWoDrsLCguuGVMgAEVJgfRPpmdiGzjFvXYhTUmMLU");
 
 pub const PLAYER_SEED: &[u8] = b"player";
 
@@ -61,7 +61,7 @@ pub mod game {
         // Coordinate system: +X=right, +Y=up, +Z=forward
         // Yaw (rotation_y) rotates around Y axis
         // Only yaw affects movement direction (FPS style - pitch is for aiming only)
-        let move_speed = 5.0;
+        let move_speed = 10.0;
         let movement = move_speed * delta_time;
 
         let yaw = player.rotation_y;

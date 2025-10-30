@@ -64,7 +64,7 @@ pub fn handler(
 #[instruction(game_id: Pubkey)]
 pub struct InitGamePlayer<'info> {
     #[account(
-        init,
+        init_if_needed,
         payer = authority,
         space = GamePlayer::SIZE,
         seeds = [
