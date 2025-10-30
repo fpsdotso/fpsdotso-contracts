@@ -94,6 +94,10 @@ pub mod game {
             player.position_z += right_z * movement;
         }
 
+        // Clamp player position within map boundaries (-25 to +25 for X and Z)
+        player.position_x = player.position_x.clamp(-25.0, 25.0);
+        player.position_z = player.position_z.clamp(-25.0, 25.0);
+
         player.last_update = clock.unix_timestamp;
 
         msg!(
