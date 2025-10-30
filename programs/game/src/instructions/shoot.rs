@@ -5,6 +5,9 @@ use crate::state::GamePlayer;
 pub enum ShootError {
     #[msg("No bullets left. Reload your gun first.")]
     NoBulletsLeft,
+    
+    #[msg("Cannot shoot while dead. Wait for respawn.")]
+    ShooterDead,
 }
 
 /// Shoot and check if any player is hit
@@ -13,6 +16,9 @@ pub enum ShootError {
 pub fn handler(ctx: Context<Shoot>, damage: u8, kill_score: u32) -> Result<()> {
     let shooter = &mut ctx.accounts.shooter;
     let clock = Clock::get()?;
+
+    // Check if shooter is alive
+    require!(shooter.is_alive, ShootError::ShooterDead);
 
     // Check if player has bullets
     require!(shooter.bullet_count > 0, ShootError::NoBulletsLeft);
