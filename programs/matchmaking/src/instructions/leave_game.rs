@@ -39,24 +39,38 @@ pub fn handler(ctx: Context<LeaveGame>) -> Result<()> {
     let total_players = game.current_players_team_a.checked_add(game.current_players_team_b)
         .ok_or(LeaveGameError::ArithmeticOverflow)?;
 
-    // If owner leaves, close the game account (room gets deleted)
+    // Handle owner leaving
     if is_owner {
-        // Properly close the account by transferring lamports to authority
-        let game_info = game.to_account_info();
-        let authority_info = ctx.accounts.authority.to_account_info();
+        // If there are other players remaining, transfer ownership to the first remaining player
+        if total_players > 0 {
+            // Find the first remaining player to become the new owner
+            let new_owner = if !game.team_a_players.is_empty() {
+                game.team_a_players[0]
+            } else {
+                game.team_b_players[0]
+            };
 
-        let game_lamports = game_info.lamports();
-        let authority_lamports = authority_info.lamports();
+            game.created_by = new_owner;
+            msg!("Owner left. Ownership transferred to: {}", new_owner);
+        } else {
+            // No players left, close the game account (room gets deleted)
+            let game_info = game.to_account_info();
+            let authority_info = ctx.accounts.authority.to_account_info();
 
-        // Transfer lamports from game to authority
-        **authority_info.try_borrow_mut_lamports()? = authority_lamports
-            .checked_add(game_lamports)
-            .ok_or(LeaveGameError::ArithmeticOverflow)?;
+            let game_lamports = game_info.lamports();
+            let authority_lamports = authority_info.lamports();
 
-        // Close the account by zeroing lamports - this is intentional for account closure
-        #[allow(clippy::manual_lamports_zeroing)]
-        {
-            **game_info.try_borrow_mut_lamports()? = 0;
+            // Transfer lamports from game to authority
+            **authority_info.try_borrow_mut_lamports()? = authority_lamports
+                .checked_add(game_lamports)
+                .ok_or(LeaveGameError::ArithmeticOverflow)?;
+
+            // Close the account by zeroing lamports - this is intentional for account closure
+            #[allow(clippy::manual_lamports_zeroing)]
+            {
+                **game_info.try_borrow_mut_lamports()? = 0;
+            }
+            msg!("Game closed - no players remaining");
         }
     } else if total_players == 0 && game.game_state == 1 {
         // If all players left during an active game, end the game
