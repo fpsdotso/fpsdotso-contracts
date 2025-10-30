@@ -48,7 +48,7 @@ pub struct GamePlayer {
     pub bullet_count: u8,
 
     /// Timestamp when reload started (0 if not reloading)
-    /// Reload takes 1.5 seconds
+    /// Reload takes 0.5 seconds
     pub reload_start_timestamp: i64,
 
     /// Bump seed for PDA

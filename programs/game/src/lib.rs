@@ -189,10 +189,16 @@ pub mod game {
         respawn_player::handler(ctx, spawn_x, spawn_y, spawn_z)
     }
 
-    /// Reload the gun (instantly refills to 10 bullets)
-    /// Client should enforce 1.5 second cooldown
+    /// Start the reload process
+    /// Records timestamp when reload started
+    pub fn start_reload(ctx: Context<StartReload>) -> Result<()> {
+        reload::start_reload_handler(ctx)
+    }
+
+    /// Complete the reload process
+    /// Refills magazine to 10 bullets after 0.5 seconds have passed
     pub fn reload(ctx: Context<Reload>) -> Result<()> {
-        reload::handler(ctx)
+        reload::reload_handler(ctx)
     }
 }
 
